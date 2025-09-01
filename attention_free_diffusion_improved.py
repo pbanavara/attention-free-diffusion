@@ -246,7 +246,7 @@ def run_experiment(dataset_name='imdb', batch_size=32, epochs=10, max_length=409
     
     # Model (your improved diffusion model)
     class ImprovedDiffusionAttentionFreeModel(nn.Module):
-        def __init__(self, vocab_size, embed_dim, num_iters=4, alpha=0.5, num_classes=2):
+        def __init__(self, vocab_size, embed_dim, num_iters=3, alpha=0.5, num_classes=2):
             super().__init__()
             
             self.embed_dim = embed_dim
@@ -262,13 +262,13 @@ def run_experiment(dataset_name='imdb', batch_size=32, epochs=10, max_length=409
             self.update_mlp = nn.Sequential(
                 nn.Linear(embed_dim, embed_dim * 2),
                 nn.GELU(),
-                nn.Dropout(0.3),
+                nn.Dropout(0.5),
                 nn.Linear(embed_dim * 2, embed_dim)
             )
             self.classifier = nn.Sequential(
                 nn.Linear(embed_dim, embed_dim),
                 nn.GELU(),
-                nn.Dropout(0.3),
+                nn.Dropout(0.5),
                 nn.Linear(embed_dim, num_classes)
             )
             self._init_weights()
@@ -429,7 +429,7 @@ def run_batch_size_experiments(dataset_name='imdb'):
     """
     Run experiments with different batch sizes
     """
-    batch_sizes = [32, 64]  # Add more as memory allows
+    batch_sizes = [32]  # Add more as memory allows
     
     all_results = {}
     
@@ -439,8 +439,10 @@ def run_batch_size_experiments(dataset_name='imdb'):
         print(f"{'='*60}\n")
         
         try:
+            time_stamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            experiment_name = f"diffusion_{dataset_name}_batch{batch_size}_{time_stamp}"
             results, model = run_experiment(
-                dataset_name='imdb',
+                dataset_name=dataset_name,
                 batch_size=batch_size,
                 epochs=10,
                 max_length=4096
@@ -449,7 +451,7 @@ def run_batch_size_experiments(dataset_name='imdb'):
             all_results[batch_size] = results
             
             # Save model checkpoint
-            checkpoint_path = f"diffusion_imdb_batch{dataset_name}.pth"
+            checkpoint_path = f"{experiment_name}.pth"
             torch.save({
                 'model_state_dict': model.state_dict(),
                 'batch_size': batch_size,
