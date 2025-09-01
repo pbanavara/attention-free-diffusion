@@ -8,22 +8,175 @@ from transformers import AutoTokenizer
 from sklearn.preprocessing import LabelEncoder
 import time
 import os
+import json
+import datetime
+import logging
+import sys
 
-def run_experiment(dataset_name='imdb', 
-                   batch_size=16, epochs=10, max_length=4096):
+def setup_logging(experiment_name, batch_size, dataset_name):
     """
-    Run a complete training experiment with specified parameters
+    Setup comprehensive logging for experiments
+    """
+    # Create logs directory
+    log_dir = f"logs/{experiment_name}_{dataset_name}_batch{batch_size}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Setup file logging
+    log_file = os.path.join(log_dir, 'training.log')
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    
+    return log_dir, logging.getLogger(__name__)
+
+def log_experiment_config(logger, log_dir, **kwargs):
+    """
+    Log all experiment configuration parameters
+    """
+    config = {
+        'timestamp': datetime.datetime.now().isoformat(),
+        'git_commit': os.popen('git rev-parse HEAD').read().strip() if os.path.exists('.git') else 'unknown',
+        'python_version': sys.version,
+        'torch_version': torch.__version__,
+        'cuda_version': torch.version.cuda,
+        'device_name': torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU',
+        'parameters': kwargs
+    }
+    
+    # Save config to JSON
+    config_file = os.path.join(log_dir, 'config.json')
+    with open(config_file, 'w') as f:
+        json.dump(config, f, indent=2)
+    
+    logger.info("="*50)
+    logger.info("EXPERIMENT CONFIGURATION")
+    logger.info("="*50)
+    for key, value in config['parameters'].items():
+        logger.info(f"{key}: {value}")
+    logger.info(f"Log directory: {log_dir}")
+    logger.info("="*50)
+    
+    return config
+
+def log_model_info(logger, model, tokenizer):
+    """
+    Log model architecture and parameter information
+    """
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    model_size_mb = sum(p.numel() * p.element_size() for p in model.parameters()) / 1024**2
+    
+    logger.info("MODEL INFORMATION")
+    logger.info("-" * 30)
+    logger.info(f"Total parameters: {total_params:,}")
+    logger.info(f"Trainable parameters: {trainable_params:,}")
+    logger.info(f"Model size: {model_size_mb:.2f} MB")
+    logger.info(f"Vocab size: {tokenizer.vocab_size}")
+    logger.info(f"Model architecture: {model.__class__.__name__}")
+    logger.info("-" * 30)
+
+def log_epoch_results(logger, log_dir, epoch, epoch_results):
+    """
+    Log results for each epoch and save to CSV
+    """
+    logger.info(f"Epoch {epoch+1}/{epoch_results['total_epochs']}:")
+    logger.info(f"  Train - Loss: {epoch_results['train_loss']:.4f}, Acc: {epoch_results['train_acc']:.4f}")
+    logger.info(f"  Test  - Loss: {epoch_results['test_loss']:.4f}, Acc: {epoch_results['test_acc']:.4f}")
+    logger.info(f"  Time: {epoch_results['epoch_time']:.2f}s")
+    logger.info(f"  Memory: {epoch_results['memory_allocated']:.2f}GB allocated, {epoch_results['memory_cached']:.2f}GB cached")
+    logger.info(f"  Overfitting gap: {(epoch_results['train_acc'] - epoch_results['test_acc']) * 100:.2f} points")
+    logger.info("-" * 50)
+    
+    # Save epoch results to CSV
+    results_file = os.path.join(log_dir, 'epoch_results.csv')
+    header = 'epoch,train_loss,train_acc,test_loss,test_acc,epoch_time,memory_allocated,memory_cached,overfitting_gap\n'
+    
+    if not os.path.exists(results_file):
+        with open(results_file, 'w') as f:
+            f.write(header)
+    
+    with open(results_file, 'a') as f:
+        f.write(f"{epoch+1},{epoch_results['train_loss']:.6f},{epoch_results['train_acc']:.6f},"
+                f"{epoch_results['test_loss']:.6f},{epoch_results['test_acc']:.6f},"
+                f"{epoch_results['epoch_time']:.2f},{epoch_results['memory_allocated']:.2f},"
+                f"{epoch_results['memory_cached']:.2f},{(epoch_results['train_acc'] - epoch_results['test_acc']) * 100:.2f}\n")
+
+def log_final_summary(logger, log_dir, all_results, config):
+    """
+    Log final experiment summary
+    """
+    best_epoch = max(range(len(all_results['test_accs'])), key=lambda i: all_results['test_accs'][i])
+    final_epoch = len(all_results['test_accs']) - 1
+    
+    summary = {
+        'experiment_config': config['parameters'],
+        'final_results': {
+            'final_train_acc': all_results['train_accs'][-1],
+            'final_test_acc': all_results['test_accs'][-1],
+            'best_test_acc': all_results['test_accs'][best_epoch],
+            'best_epoch': best_epoch + 1,
+            'final_train_loss': all_results['train_losses'][-1],
+            'final_test_loss': all_results['test_losses'][-1],
+            'avg_epoch_time': sum(all_results['epoch_times']) / len(all_results['epoch_times']),
+            'total_training_time': sum(all_results['epoch_times']),
+            'max_overfitting_gap': max(ta - te for ta, te in zip(all_results['train_accs'], all_results['test_accs'])) * 100,
+            'converged': all_results['test_accs'][-1] > all_results['test_accs'][-3] if len(all_results['test_accs']) >= 3 else False
+        }
+    }
+    
+    # Save summary
+    summary_file = os.path.join(log_dir, 'summary.json')
+    with open(summary_file, 'w') as f:
+        json.dump(summary, f, indent=2)
+    
+    logger.info("="*50)
+    logger.info("FINAL EXPERIMENT SUMMARY")
+    logger.info("="*50)
+    logger.info(f"Final test accuracy: {summary['final_results']['final_test_acc']:.4f}")
+    logger.info(f"Best test accuracy: {summary['final_results']['best_test_acc']:.4f} (epoch {summary['final_results']['best_epoch']})")
+    logger.info(f"Final train accuracy: {summary['final_results']['final_train_acc']:.4f}")
+    logger.info(f"Max overfitting gap: {summary['final_results']['max_overfitting_gap']:.2f} points")
+    logger.info(f"Average epoch time: {summary['final_results']['avg_epoch_time']:.2f}s")
+    logger.info(f"Total training time: {summary['final_results']['total_training_time']:.2f}s")
+    logger.info(f"Converged: {summary['final_results']['converged']}")
+    logger.info("="*50)
+    
+    return summary
+def run_experiment(dataset_name='imdb', batch_size=32, epochs=10, max_length=4096, 
+                   embed_dim=256, num_iters=4, alpha=0.5, lr=5e-5, experiment_name="diffusion_experiment"):
+    """
+    Run a complete training experiment with comprehensive logging
     """
     
-    # Fixed hyperparameters
-    EMBED_DIM = 256
-    NUM_ITERS = 4
-    ALPHA = 0.5
-    LR = 5e-5
+    # Setup logging
+    log_dir, logger = setup_logging(experiment_name, batch_size, dataset_name)
+    
+    # Fixed and passed hyperparameters
+    EMBED_DIM = embed_dim
+    NUM_ITERS = num_iters
+    ALPHA = alpha
+    LR = lr
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    print(f"Starting experiment: {dataset_name}, batch_size={batch_size}, epochs={epochs}")
-    print(f"Using device: {DEVICE}")
+    # Log all configuration
+    config = log_experiment_config(
+        logger, log_dir,
+        dataset_name=dataset_name,
+        batch_size=batch_size,
+        epochs=epochs,
+        max_length=max_length,
+        embed_dim=EMBED_DIM,
+        num_iters=NUM_ITERS,
+        alpha=ALPHA,
+        learning_rate=LR,
+        device=str(DEVICE),
+        experiment_name=experiment_name
+    )
     
     # Dataset loading
     if dataset_name == 'imdb':
@@ -109,13 +262,13 @@ def run_experiment(dataset_name='imdb',
             self.update_mlp = nn.Sequential(
                 nn.Linear(embed_dim, embed_dim * 2),
                 nn.GELU(),
-                nn.Dropout(0.1),
+                nn.Dropout(0.3),
                 nn.Linear(embed_dim * 2, embed_dim)
             )
             self.classifier = nn.Sequential(
                 nn.Linear(embed_dim, embed_dim),
                 nn.GELU(),
-                nn.Dropout(0.1),
+                nn.Dropout(0.3),
                 nn.Linear(embed_dim, num_classes)
             )
             self._init_weights()
@@ -272,11 +425,12 @@ def run_experiment(dataset_name='imdb',
     return results, model
 
 # Batch size experiment runner
-def run_batch_size_experiments(dataset_name: str='imdb', 
-                               batch_sizes : list[int]=[16, 32, 64], epochs=10):
+def run_batch_size_experiments(dataset_name='imdb'):
     """
     Run experiments with different batch sizes
     """
+    batch_sizes = [32, 64]  # Add more as memory allows
+    
     all_results = {}
     
     for batch_size in batch_sizes:
@@ -286,16 +440,16 @@ def run_batch_size_experiments(dataset_name: str='imdb',
         
         try:
             results, model = run_experiment(
-                dataset_name=dataset_name,
+                dataset_name='imdb',
                 batch_size=batch_size,
-                epochs=epochs,
+                epochs=10,
                 max_length=4096
             )
             
             all_results[batch_size] = results
             
             # Save model checkpoint
-            checkpoint_path = f"diffusion_{dataset_name}_batch{batch_size}.pth"
+            checkpoint_path = f"diffusion_imdb_batch{dataset_name}.pth"
             torch.save({
                 'model_state_dict': model.state_dict(),
                 'batch_size': batch_size,
@@ -333,4 +487,4 @@ if __name__ == "__main__":
     # results, model = run_experiment('imdb', batch_size=32, epochs=10)
     
     # Multiple batch size experiments
-    all_results = run_batch_size_experiments('imdb', batch_sizes=[16, 32, 64], epochs=10)
+    all_results = run_batch_size_experiments()
