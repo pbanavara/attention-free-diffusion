@@ -1,0 +1,36 @@
+=== Training Start - 2025-09-01 18:01:40.979125 ===
+Model: ImprovedDiffusionAttentionFreeModel
+Learning Rate: 2e-05
+Epochs: 5
+Initial Scaler Scale: 65536.0
+==================================================
+Epoch 1/5:
+  Train - Loss: 0.8886, Acc: 0.5452
+  Test  - Loss: 0.7026, Acc: 0.6529
+  Time: 218.44s, LR: 2.00e-05
+  Scaler Scale: 32768.0
+--------------------------------------------------
+Epoch 2/5:
+  Train - Loss: 0.5458, Acc: 0.7640
+  Test  - Loss: 0.4600, Acc: 0.8609
+  Time: 217.47s, LR: 2.00e-05
+  Scaler Scale: 16384.0
+--------------------------------------------------
+Epoch 3/5:
+  Train - Loss: 0.3652, Acc: 0.8748
+  Test  - Loss: 0.4214, Acc: 0.8821
+  Time: 217.76s, LR: 2.00e-05
+  Scaler Scale: 32768.0
+--------------------------------------------------
+Epoch 4/5:
+  Train - Loss: 0.3231, Acc: 0.8935
+  Test  - Loss: 0.4233, Acc: 0.8924
+  Time: 217.44s, LR: 2.00e-05
+  Scaler Scale: 32768.0
+--------------------------------------------------
+Epoch 5/5:
+  Train - Loss: 0.2915, Acc: 0.9063
+  Test  - Loss: 0.4182, Acc: 0.9007
+  Time: 217.82s, LR: 2.00e-05
+  Scaler Scale: 32768.0
+--------------------------------------------------

@@ -1,0 +1,6 @@
+=== Training Start - 2025-09-01 17:59:36.779698 ===
+Model: ImprovedDiffusionAttentionFreeModel
+Learning Rate: 2e-05
+Epochs: 5
+Initial Scaler Scale: 65536.0
+==================================================
