@@ -3,7 +3,7 @@
 A novel approach to sequence classification that replaces self-attention with iterative diffusion-based information propagation, achieving competitive accuracy with dramatically reduced memory usage.
 
 ## Potential applications
-Edge devices with low memory footprint - obotics, IoT and mobile applications.
+Edge devices with low memory footprint - robotics, IoT and mobile applications.
 
 ## Overview
 
