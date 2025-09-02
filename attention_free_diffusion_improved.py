@@ -484,7 +484,7 @@ def run_batch_size_experiments(dataset_name='imdb', epochs=10):
                 dataset_name=dataset_name,
                 batch_size=batch_size,
                 epochs=epochs,
-                num_iters=8,
+                num_iters=16,
                 max_length=4096,
                 experiment_name=experiment_name
             )
