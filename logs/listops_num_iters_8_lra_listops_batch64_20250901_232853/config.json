@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-09-01T23:29:23.844448",
+  "git_commit": "9f643c754d2754570f54082229f7d2c7c7845145",
+  "python_version": "3.10.12 (main, May 27 2025, 17:12:29) [GCC 11.4.0]",
+  "torch_version": "2.8.0+cu128",
+  "cuda_version": "12.8",
+  "device_name": "NVIDIA A100-SXM4-40GB",
+  "parameters": {
+    "dataset_name": "lra_listops",
+    "batch_size": 64,
+    "epochs": 10,
+    "max_length": 2000,
+    "embed_dim": 256,
+    "num_iters": 8,
+    "alpha": 0.5,
+    "learning_rate": 5e-05,
+    "device": "cuda",
+    "experiment_name": "listops_num_iters_8",
+    "vocab_size": 27,
+    "num_classes": 10
+  }
+}

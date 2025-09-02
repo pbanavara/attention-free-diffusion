@@ -63,7 +63,7 @@ def log_experiment_config(logger, log_dir, **kwargs):
     
     return config
 
-def log_model_info(logger, model, tokenizer):
+def log_model_info(logger, model, vocab_size):
     """
     Log model architecture and parameter information
     """
@@ -76,7 +76,7 @@ def log_model_info(logger, model, tokenizer):
     logger.info(f"Total parameters: {total_params:,}")
     logger.info(f"Trainable parameters: {trainable_params:,}")
     logger.info(f"Model size: {model_size_mb:.2f} MB")
-    logger.info(f"Vocab size: {tokenizer.vocab_size}")
+    logger.info(f"Vocab size: {vocab_size}")
     logger.info(f"Model architecture: {model.__class__.__name__}")
     logger.info("-" * 30)
 
@@ -147,11 +147,17 @@ def log_final_summary(logger, log_dir, all_results, config):
     logger.info("="*50)
     
     return summary
-def run_experiment(dataset_name='imdb', batch_size=32, epochs=10, max_length=4096, 
+def run_experiment(dataset_name='imdb', 
+                   batch_size=32, epochs=10, max_length=4096, 
                    embed_dim=256, num_iters=4, alpha=0.5, lr=5e-5, experiment_name="diffusion_experiment"):
     """
     Run a complete training experiment with comprehensive logging
+    Supports both standard datasets (imdb, ag_news) and LRA benchmarks
     """
+    
+    # Import LRA dataloader if needed
+    if dataset_name.startswith('lra_'):
+        from lra_dataloader import create_lra_dataloaders  # Import your LRA file
     
     # Setup logging
     log_dir, logger = setup_logging(experiment_name, batch_size, dataset_name)
@@ -162,6 +168,70 @@ def run_experiment(dataset_name='imdb', batch_size=32, epochs=10, max_length=409
     ALPHA = alpha
     LR = lr
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"using dataset {dataset_name}")
+    # Handle LRA datasets vs standard datasets
+    if dataset_name.startswith('lra_'):
+        # Extract LRA task name (e.g., 'lra_text' -> 'text')
+        lra_task = dataset_name.replace('lra_', '')
+        
+        # Create LRA dataloaders
+        train_loader, test_loader, task_config = create_lra_dataloaders(
+            task_name=lra_task,
+            batch_size=batch_size
+        )
+        
+        # Use LRA task configuration
+        vocab_size = task_config['vocab_size']
+        num_classes = task_config['num_classes']
+        max_length = task_config['seq_len']  # Override with task-specific length
+        
+        logger.info(f"LRA {lra_task.upper()} Task Configuration:")
+        logger.info(f"  Sequence Length: {task_config['seq_len']}")
+        logger.info(f"  Vocab Size: {task_config['vocab_size']}")
+        logger.info(f"  Num Classes: {task_config['num_classes']}")
+        logger.info(f"  Input Type: {task_config['input_type']}")
+        
+    else:
+        # Standard dataset handling (existing code)
+        if dataset_name == 'imdb':
+            dataset = load_dataset('imdb')
+            train_texts = dataset['train']['text']
+            train_labels = dataset['train']['label']  # Already 0/1 for IMDB
+            test_texts = dataset['test']['text']  
+            test_labels = dataset['test']['label']
+            num_classes = 2
+            
+        elif dataset_name == 'ag_news':
+            dataset = load_dataset('ag_news')
+            label_encoder = LabelEncoder()
+            train_labels = label_encoder.fit_transform(dataset['train']['label'])
+            test_labels = label_encoder.transform(dataset['test']['label'])
+            train_texts = dataset['train']['text']
+            test_texts = dataset['test']['text']
+            num_classes = 4
+        
+        else:
+            raise ValueError(f"Dataset {dataset_name} not supported")
+        
+        # Tokenizer for standard datasets
+        tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+        
+        vocab_size = tokenizer.vocab_size
+        
+        # Create datasets and loaders for standard datasets
+        train_dataset = TextDataset(train_texts, train_labels, tokenizer, max_length)
+        test_dataset = TextDataset(test_texts, test_labels, tokenizer, max_length)
+        
+        train_loader = DataLoader(
+            train_dataset, 
+            batch_size=batch_size, 
+            shuffle=True,
+            num_workers=4,
+            pin_memory=True
+        )
+        test_loader = DataLoader(test_dataset, batch_size=batch_size)
     
     # Log all configuration
     config = log_experiment_config(
@@ -175,29 +245,10 @@ def run_experiment(dataset_name='imdb', batch_size=32, epochs=10, max_length=409
         alpha=ALPHA,
         learning_rate=LR,
         device=str(DEVICE),
-        experiment_name=experiment_name
+        experiment_name=experiment_name,
+        vocab_size=vocab_size,
+        num_classes=num_classes
     )
-    
-    # Dataset loading
-    if dataset_name == 'imdb':
-        dataset = load_dataset('imdb')
-        train_texts = dataset['train']['text']
-        train_labels = dataset['train']['label']  # Already 0/1 for IMDB
-        test_texts = dataset['test']['text']  
-        test_labels = dataset['test']['label']
-        num_classes = 2
-        
-    elif dataset_name == 'ag_news':
-        dataset = load_dataset('ag_news')
-        label_encoder = LabelEncoder()
-        train_labels = label_encoder.fit_transform(dataset['train']['label'])
-        test_labels = label_encoder.transform(dataset['test']['label'])
-        train_texts = dataset['train']['text']
-        test_texts = dataset['test']['text']
-        num_classes = 4
-    
-    else:
-        raise ValueError(f"Dataset {dataset_name} not supported")
     
     # Tokenizer
     tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
@@ -231,22 +282,9 @@ def run_experiment(dataset_name='imdb', batch_size=32, epochs=10, max_length=409
                 'label': torch.tensor(label, dtype=torch.long)
             }
     
-    # Create datasets and loaders
-    train_dataset = TextDataset(train_texts, train_labels, tokenizer, max_length)
-    test_dataset = TextDataset(test_texts, test_labels, tokenizer, max_length)
-    
-    train_loader = DataLoader(
-        train_dataset, 
-        batch_size=batch_size, 
-        shuffle=True,
-        num_workers=4,
-        pin_memory=True
-    )
-    test_loader = DataLoader(test_dataset, batch_size=batch_size)
-    
     # Model (your improved diffusion model)
     class ImprovedDiffusionAttentionFreeModel(nn.Module):
-        def __init__(self, vocab_size, embed_dim, num_iters=3, alpha=0.5, num_classes=2):
+        def __init__(self, vocab_size, embed_dim, num_iters=4, alpha=0.5, num_classes=2):
             super().__init__()
             
             self.embed_dim = embed_dim
@@ -257,18 +295,18 @@ def run_experiment(dataset_name='imdb', batch_size=32, epochs=10, max_length=409
             self.embedding = nn.Embedding(vocab_size, embed_dim)
             self.neighbor_proj = nn.ModuleList([
                 nn.Linear(embed_dim, embed_dim, bias=False) for _ in range(3)
-            ])
+])
             self.layer_norm = nn.LayerNorm(embed_dim)
             self.update_mlp = nn.Sequential(
                 nn.Linear(embed_dim, embed_dim * 2),
                 nn.GELU(),
-                nn.Dropout(0.5),
+                nn.Dropout(0.1),
                 nn.Linear(embed_dim * 2, embed_dim)
             )
             self.classifier = nn.Sequential(
                 nn.Linear(embed_dim, embed_dim),
                 nn.GELU(),
-                nn.Dropout(0.5),
+                nn.Dropout(0.1),
                 nn.Linear(embed_dim, num_classes)
             )
             self._init_weights()
@@ -425,33 +463,36 @@ def run_experiment(dataset_name='imdb', batch_size=32, epochs=10, max_length=409
     return results, model
 
 # Batch size experiment runner
-def run_batch_size_experiments(dataset_name='imdb'):
+def run_batch_size_experiments(dataset_name='imdb', epochs=10):
     """
     Run experiments with different batch sizes
     """
-    batch_sizes = [32]  # Add more as memory allows
+    batch_sizes = [64, 128]  # Add more as memory allows
     
     all_results = {}
+    
     
     for batch_size in batch_sizes:
         print(f"\n{'='*60}")
         print(f"STARTING EXPERIMENT WITH BATCH_SIZE={batch_size}")
         print(f"{'='*60}\n")
-        
+        time_stamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        experiment_name = "listops_num_iters_8"
+        pth_file_name = f"diffusion_{experiment_name}_{dataset_name}_{batch_size}_experiment_{time_stamp}"
         try:
-            time_stamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-            experiment_name = f"diffusion_{dataset_name}_batch{batch_size}_{time_stamp}"
             results, model = run_experiment(
                 dataset_name=dataset_name,
                 batch_size=batch_size,
-                epochs=10,
-                max_length=4096
+                epochs=epochs,
+                num_iters=8,
+                max_length=4096,
+                experiment_name=experiment_name
             )
             
             all_results[batch_size] = results
             
             # Save model checkpoint
-            checkpoint_path = f"{experiment_name}.pth"
+            checkpoint_path = f"{pth_file_name}.pth"
             torch.save({
                 'model_state_dict': model.state_dict(),
                 'batch_size': batch_size,
@@ -489,4 +530,4 @@ if __name__ == "__main__":
     # results, model = run_experiment('imdb', batch_size=32, epochs=10)
     
     # Multiple batch size experiments
-    all_results = run_batch_size_experiments()
+    all_results = run_batch_size_experiments('lra_listops')

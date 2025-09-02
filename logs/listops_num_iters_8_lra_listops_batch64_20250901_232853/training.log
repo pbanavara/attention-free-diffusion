@@ -1,0 +1,44 @@
+2025-09-01 23:29:23,843 - INFO - LRA LISTOPS Task Configuration:
+2025-09-01 23:29:23,844 - INFO -   Sequence Length: 2000
+2025-09-01 23:29:23,844 - INFO -   Vocab Size: 27
+2025-09-01 23:29:23,844 - INFO -   Num Classes: 10
+2025-09-01 23:29:23,844 - INFO -   Input Type: discrete
+2025-09-01 23:29:23,872 - INFO - ==================================================
+2025-09-01 23:29:23,872 - INFO - EXPERIMENT CONFIGURATION
+2025-09-01 23:29:23,872 - INFO - ==================================================
+2025-09-01 23:29:23,872 - INFO - dataset_name: lra_listops
+2025-09-01 23:29:23,872 - INFO - batch_size: 64
+2025-09-01 23:29:23,872 - INFO - epochs: 10
+2025-09-01 23:29:23,872 - INFO - max_length: 2000
+2025-09-01 23:29:23,872 - INFO - embed_dim: 256
+2025-09-01 23:29:23,872 - INFO - num_iters: 8
+2025-09-01 23:29:23,872 - INFO - alpha: 0.5
+2025-09-01 23:29:23,872 - INFO - learning_rate: 5e-05
+2025-09-01 23:29:23,872 - INFO - device: cuda
+2025-09-01 23:29:23,872 - INFO - experiment_name: listops_num_iters_8
+2025-09-01 23:29:23,872 - INFO - vocab_size: 27
+2025-09-01 23:29:23,872 - INFO - num_classes: 10
+2025-09-01 23:29:23,872 - INFO - Log directory: logs/listops_num_iters_8_lra_listops_batch64_20250901_232853
+2025-09-01 23:29:23,872 - INFO - ==================================================
+2025-09-01 23:53:17,940 - INFO - LRA LISTOPS Task Configuration:
+2025-09-01 23:53:17,940 - INFO -   Sequence Length: 2000
+2025-09-01 23:53:17,940 - INFO -   Vocab Size: 27
+2025-09-01 23:53:17,940 - INFO -   Num Classes: 10
+2025-09-01 23:53:17,940 - INFO -   Input Type: discrete
+2025-09-01 23:53:17,944 - INFO - ==================================================
+2025-09-01 23:53:17,944 - INFO - EXPERIMENT CONFIGURATION
+2025-09-01 23:53:17,944 - INFO - ==================================================
+2025-09-01 23:53:17,944 - INFO - dataset_name: lra_listops
+2025-09-01 23:53:17,945 - INFO - batch_size: 128
+2025-09-01 23:53:17,945 - INFO - epochs: 10
+2025-09-01 23:53:17,945 - INFO - max_length: 2000
+2025-09-01 23:53:17,945 - INFO - embed_dim: 256
+2025-09-01 23:53:17,945 - INFO - num_iters: 8
+2025-09-01 23:53:17,945 - INFO - alpha: 0.5
+2025-09-01 23:53:17,945 - INFO - learning_rate: 5e-05
+2025-09-01 23:53:17,945 - INFO - device: cuda
+2025-09-01 23:53:17,945 - INFO - experiment_name: listops_num_iters_8
+2025-09-01 23:53:17,945 - INFO - vocab_size: 27
+2025-09-01 23:53:17,945 - INFO - num_classes: 10
+2025-09-01 23:53:17,945 - INFO - Log directory: logs/listops_num_iters_8_lra_listops_batch128_20250901_235247
+2025-09-01 23:53:17,945 - INFO - ==================================================

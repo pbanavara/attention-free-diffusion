@@ -1,0 +1,22 @@
+2025-09-01 22:48:31,578 - INFO - LRA LISTOPS Task Configuration:
+2025-09-01 22:48:31,578 - INFO -   Sequence Length: 2000
+2025-09-01 22:48:31,578 - INFO -   Vocab Size: 20
+2025-09-01 22:48:31,578 - INFO -   Num Classes: 10
+2025-09-01 22:48:31,578 - INFO -   Input Type: discrete
+2025-09-01 22:48:31,605 - INFO - ==================================================
+2025-09-01 22:48:31,605 - INFO - EXPERIMENT CONFIGURATION
+2025-09-01 22:48:31,605 - INFO - ==================================================
+2025-09-01 22:48:31,605 - INFO - dataset_name: lra_listops
+2025-09-01 22:48:31,605 - INFO - batch_size: 16
+2025-09-01 22:48:31,605 - INFO - epochs: 5
+2025-09-01 22:48:31,605 - INFO - max_length: 2000
+2025-09-01 22:48:31,605 - INFO - embed_dim: 256
+2025-09-01 22:48:31,605 - INFO - num_iters: 4
+2025-09-01 22:48:31,605 - INFO - alpha: 0.5
+2025-09-01 22:48:31,606 - INFO - learning_rate: 5e-05
+2025-09-01 22:48:31,606 - INFO - device: cuda
+2025-09-01 22:48:31,606 - INFO - experiment_name: diffusion_experiment
+2025-09-01 22:48:31,606 - INFO - vocab_size: 20
+2025-09-01 22:48:31,606 - INFO - num_classes: 10
+2025-09-01 22:48:31,606 - INFO - Log directory: logs/diffusion_experiment_lra_listops_batch16_20250901_224829
+2025-09-01 22:48:31,606 - INFO - ==================================================
